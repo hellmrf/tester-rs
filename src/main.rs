@@ -2,9 +2,33 @@ use std::fs;
 use std::io;
 use std::io::Write;
 use std::path::Path;
-use std::process::Command;
+use colored::Colorize;
 
 const TESTFILE: &str = "/home/helitonmrf/Projects/tester-rs/aaa.txt";
+
+#[allow(dead_code)]
+enum LogLevel {
+    Debug,
+    Success,
+    Info,
+    Warn,
+    Error,
+}
+
+fn soft_panic(msg: String) -> ! {
+    log(&msg, LogLevel::Error);
+    std::process::exit(1);
+}
+
+fn log(msg: &str, level: LogLevel) {
+    match level {
+        LogLevel::Debug => println!("{}", msg.blue()),
+        LogLevel::Warn => println!("{}", msg.yellow()),
+        LogLevel::Error => println!("{}", msg.red()),
+        LogLevel::Success => println!("{}", msg.green()),
+        _ => println!("{}", msg)
+    };
+}
 
 // TODO: check how to get the output of the Python program
 // TODO: implement the get_test_files_from_dir function
