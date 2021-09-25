@@ -5,8 +5,6 @@ use std::path::Path;
 use std::process::{Command, Stdio};
 use colored::Colorize;
 
-const TESTFILE: &str = "/home/helitonmrf/Projects/tester-rs/aaa.txt";
-
 #[allow(dead_code)]
 enum LogLevel {
     Debug,
