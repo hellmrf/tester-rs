@@ -93,7 +93,7 @@ mod tests {
             _ => {}
         }
     }
-    
+
     #[test]
     fn test_run_py_and_capture_output() {
         let path = get_tests_path();
@@ -110,5 +110,14 @@ mod tests {
         let hello_out = run_py_and_capture_output(&path.join("lab10.py"), &input).unwrap();
         let diff = diff_file_str(output.as_path(), &hello_out);
         assert!(diff.is_none());
+    }
+
+    #[test]
+    fn test_get_test_files() {
+        let path = get_tests_path();
+        let testpath = path.join("testfiles");
+        let (infiles, outfiles) = get_test_files(testpath.as_path()).unwrap();
+        assert_eq!(infiles.len(), outfiles.len());
+        assert_eq!(infiles.len(), 10);
     }
 }
