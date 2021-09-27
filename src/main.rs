@@ -2,11 +2,14 @@ use std::path::Path;
 
 mod logger;
 mod tester;
-use tester::{get_test_files};
+use crate::tester::test_all;
+
+
 
 fn main() {
-    let tests_path = Path::new("/home/helitonmrf/Documents/TEMP/tally/pde/lab11/tests");
-    let _test_files = get_test_files(&tests_path).expect("Failed to get test files.");
+    let tests_path = Path::new("/home/helitonmrf/Documents/TEMP/tally/pde/lab10/tests");
+    let script_path = Path::new("/home/helitonmrf/Documents/TEMP/tally/pde/lab10/lab10.py");
+    test_all(tests_path, script_path).unwrap();
 }
 
 // fn main_diff() {

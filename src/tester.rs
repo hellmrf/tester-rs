@@ -5,12 +5,12 @@ use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 
-use crate::logger::{log, LogLevel};
+use crate::logger::{log, LogLevel, soft_panic};
 
 /// Check if the file contents is the same as the expected String.
 /// Returns (file_contents, expected) if there is a difference. Returns None otherwise.
 pub fn diff_file_str(filename: &Path, expected: &String) -> Option<(String, String)> {
-    let file_contents = fs::read_to_string(filename).expect("Something went wrong reading the file. Check if you have all the permissions and that the file exists.");
+    let file_contents = fs::read_to_string(filename).expect(format!("Something went wrong reading the file {}. Check if you have all the permissions and that the file exists.", filename.display()).as_str());
     if file_contents == *expected {
         return None;
     }
@@ -37,7 +37,7 @@ pub fn run_py_and_capture_output(filename: &Path, input: &Path) -> io::Result<St
     Ok(result)
 }
 
-pub fn get_test_files(dir: &Path) -> io::Result<(Vec<PathBuf>, Vec<PathBuf>)> {
+pub fn get_test_files(dir: &Path) -> io::Result<Vec<(PathBuf, PathBuf)>> {
     if !dir.is_dir() {
         return Err(io::Error::new(
             io::ErrorKind::NotFound,
@@ -56,17 +56,51 @@ pub fn get_test_files(dir: &Path) -> io::Result<(Vec<PathBuf>, Vec<PathBuf>)> {
                     infiles.push(infile);
                     outfiles.push(outfile);
                 }
-            },
-            Err(e) => log(format!("Error in the globbed file: {}. Skipping.", e).as_str(), LogLevel::Error), 
+            }
+            Err(e) => log(
+                format!("Error in the globbed file: {}. Skipping.", e).as_str(),
+                LogLevel::Error,
+            ),
         };
     }
 
     infiles.sort_unstable();
     outfiles.sort_unstable();
 
-    Ok((infiles, outfiles))
+    let zipped = infiles.into_iter().zip(outfiles.into_iter()).collect();
+
+    Ok(zipped)
 }
 
+pub fn test_all(test_path: &Path, script_path: &Path) -> Result<(), &'static str> {
+    let test_files = get_test_files(test_path);
+    if let Err(e) = test_files {
+        soft_panic(format!("There was an error getting the test files: {}", e));
+    }
+    let test_files = test_files.unwrap();
+    let mut test_counter = 1;
+    for (infile, outfile) in test_files {
+        let result = run_py_and_capture_output(script_path, infile.as_path());
+        if let Err(e) = result {
+            soft_panic(format!("There was an error running the script: {}", e));
+        }
+        let result = result.unwrap();
+        let diff = diff_file_str(outfile.as_path(), &result);
+        match diff {
+            None => log(format!("Teste {}: passed", test_counter).as_str(), LogLevel::Success),
+            Some((expected, your)) => {
+                log(format!("Teste {}: failed", test_counter).as_str(), LogLevel::Error);
+                log(">>> Your output:", LogLevel::Warn);
+                log(format!("{}", your).as_str(), LogLevel::Info);
+                log(">>> Expected output:", LogLevel::Warn);
+                log(format!("{}", expected).as_str(), LogLevel::Info);
+            }
+        }
+        test_counter += 1;
+    }
+
+    Ok(())
+}
 
 // TESTS
 #[cfg(test)]
@@ -85,11 +119,11 @@ mod tests {
         let expected = "hello\nthere\n";
         let result = diff_file_str(&path.join("file1.txt"), &expected.to_string());
         match result {
-            Some ((file_contents, expected)) => {
+            Some((file_contents, expected)) => {
                 println!("File contents: {:?}", file_contents);
                 println!("Expected: {:?}", expected);
                 panic!("");
-            },
+            }
             _ => {}
         }
     }
@@ -116,8 +150,8 @@ mod tests {
     fn test_get_test_files() {
         let path = get_tests_path();
         let testpath = path.join("testfiles");
-        let (infiles, outfiles) = get_test_files(testpath.as_path()).unwrap();
-        assert_eq!(infiles.len(), outfiles.len());
-        assert_eq!(infiles.len(), 10);
+        let files = get_test_files(testpath.as_path()).unwrap();
+        assert_eq!(files.len(), 10);
+        assert!(files[0].0.is_file() && files[0].1.is_file());
     }
 }
